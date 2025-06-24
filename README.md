@@ -1,0 +1,15 @@
+https://www.pygame.org/docs/ref/surface.html#pygame.Surface.set_palette
+https://stackoverflow.com/questions/9126141/assigning-different-palette-indices-to-a-paletted-image
+https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.youtube.com/watch%3Fv%3DMLrDR-Mks8I%26pp%3DygUPI3B5Z2FtZV9zbm93aW5n&ved=2ahUKEwijzPGuj4qOAxVbQzABHQioA6kQtwJ6BAgREAI&usg=AOvVaw1sZnRZSckOhFL2PkYQTiRn
+https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://forums.tigsource.com/index.php%3Ftopic%3D27961.0&ved=2ahUKEwijzPGuj4qOAxVbQzABHQioA6kQFnoECBkQAQ&usg=AOvVaw3Gw4cEORj426oeepaiar0h
+https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://napsterinblue.github.io/blog/2019/07/22/making-images-paletteable/&ved=2ahUKEwijzPGuj4qOAxVbQzABHQioA6kQFnoECC8QAQ&usg=AOvVaw0SiNNIadoL6kcUIVp67pKW
+https://www.spriters-resource.com/fullview/56929/
+https://www.spriters-resource.com/fullview/52571/
+https://www.spriters-resource.com/fullview/52569/
+https://www.spriters-resource.com/fullview/65962/
+https://www.spriters-resource.com/fullview/164125/
+https://www.spriters-resource.com/fullview/164124/
+https://www.spriters-resource.com/fullview/164123/
+https://www.spriters-resource.com/fullview/20641/
+https://www.spriters-resource.com/fullview/20640/
+https://www.spriters-resource.com/nes/supermariobros/sheet/20640/

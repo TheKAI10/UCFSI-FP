@@ -166,6 +166,7 @@ def main():
     mario_image_t_right, mario_image_t_left = load_scaled_flipped_image("mario_t.png")
 
     floor_brick = load_scaled_image("floor_brick.png")
+    brick = load_scaled_image("brick.png")
 
     cloud_1 = load_scaled_image("cloud_1.png")
     cloud_2 = load_scaled_image("cloud_2.png")
@@ -213,6 +214,8 @@ def main():
     squished = 0
     units = 0
     floor_sub = 0
+
+    world = [(0, 16, 10, 5, 2)]
 
     while True:
         # fill background
@@ -302,7 +305,7 @@ def main():
         player_y += player_vy
         player_rect = Rect(player_x, player_y, player_width, player_height)
 
-        """  """
+        """ Spawning """
         if cloud_spawner.spawn(scroll_speed):
             add_non_colliding_position(Cloud, size, entities, size[0], x_start=size[0], x_end=size[0]*2)
 
@@ -312,6 +315,28 @@ def main():
         if goomba_spawner.spawn(scroll_speed):
             entities.append(Goomba(size[0], size[1]-(48*scale)))
 
+        """ World Drawing """
+        for i in range(size[0]//(1024*scale) + math.ceil(size[0]/(512*scale))):
+
+            #x = -(-(units) % (512*scale)) + (1024*scale)*i + 2/scale
+            #if x < 0:
+            #    print(x, "t:",(x * scale * 4) % (scale * 2))
+            #    if (x * scale * 4) % (scale * 2):
+            #        x += 1/(scale*4)
+            #        print(x)
+
+
+            screen.blit(floor_brick, (math.floor(-(-units % (512*scale)) + (1024*scale)*i + 2/scale), size[1]-(16*scale), 1024*scale, 16*scale))
+            screen.blit(floor_brick, (math.floor(-(-units % (512*scale)) + (1024*scale)*i + 2/scale), size[1]-(32*scale), 1024*scale, 16*scale))
+
+        for i in range(len(world)):
+            item = world[i]
+            num_tiles = item[3]*item[4]
+            for j in range(num_tiles):
+                screen.blit(brick, (scale*16*(item[1] + (j%num_tiles)), scale*16*(item[2] + j//num_tiles), scale*16, scale*16))
+            world
+
+        """ Entity Update and Drawing """
         i = 0
         while i < len(entities):
             entity = entities[i]
@@ -334,6 +359,7 @@ def main():
             print("You squished", squished, "goombas")
             quit_g()
 
+        """ Player Animation and Drawing"""
         if player_on_ground:
             if player_running:
                 if (player_facing_right and player_vx < 0) or (not player_facing_right and player_vx > 0):
@@ -351,6 +377,7 @@ def main():
 
         screen.blit(player_image, (player_x, player_y, player_width, player_height))
 
+        """ UI Drawing """
         score_text_string = "Score: " + str(squished)
         score_text = score_font.render(score_text_string, True, (0, 0, 0))
         score_text_rect = score_text.get_rect()
@@ -358,20 +385,6 @@ def main():
         screen.blit(score_text, score_text_rect)
 
         floor_sub = -(-(units) % (512*scale)) + (1024*scale)*i + 2/scale - math.floor(-(-(units) % (512*scale)) + (1024*scale)*i + 2/scale)
-
-        for i in range(size[0]//(1024*scale) + math.ceil(size[0]/(512*scale))):
-
-            #x = -(-(units) % (512*scale)) + (1024*scale)*i + 2/scale
-            #if x < 0:
-            #    print(x, "t:",(x * scale * 4) % (scale * 2))
-            #    if (x * scale * 4) % (scale * 2):
-            #        x += 1/(scale*4)
-            #        print(x)
-
-
-            screen.blit(floor_brick, (math.floor(-(-units % (512*scale)) + (1024*scale)*i + 2/scale), size[1]-(16*scale), 1024*scale, 16*scale))
-            screen.blit(floor_brick, (math.floor(-(-units % (512*scale)) + (1024*scale)*i + 2/scale), size[1]-(32*scale), 1024*scale, 16*scale))
-
 
         # Show frame and fix framerate
         display.flip()

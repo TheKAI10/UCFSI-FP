@@ -33,9 +33,15 @@ class Scroller(Entity):
     def tick(self, scroll_speed, size) -> bool:
         self.x += scroll_speed + self.speed
         return self.x > -self.img.width
+    
+    def set_palette(self, palette):
+        for image in self.images:
+            image.set_palette(palette)
 
+# "There's no such thing as compile time in python" - an idiot
 Cloud = type("Cloud", (Scroller,), {"speed": -0.5, "list": []})
 Bush = type("Bush", (Scroller,), {"speed": 0, "list": []})
+Hill = type("Hill", (Scroller,), {"speed": 0, "list": []})
 
 class Goomba(Entity):
     images: list[Surface]
@@ -83,10 +89,41 @@ def load_scaled_image(name: str): #, scale: int):
     result = image.load(name)
     return transform.scale(result, (result.get_width()*scale, result.get_height()*scale))
 
+def load_scaled_indexed_image(name: str): #, scale: int):
+    result = image.load(name)
+    palette = result.get_palette()
+    result = transform.scale(result, (result.width*scale, result.height*scale))
+    result.set_palette(palette)
+    return result
+
+def load_scaled_indexed_image_palette(name: str): #, scale: int):
+    result = image.load(name)
+    palette = result.get_palette()
+    result = transform.scale(result, (result.width*scale, result.height*scale))
+    result.set_palette(palette)
+    return result, palette
+
 def load_scaled_flipped_image(name: str): #, scale: int):
     result = load_scaled_image(name)
     return result, transform.flip(result, True, False)
 
+def load_scaled_flipped_indexed_image(name: str): #, scale: int):
+    result = image.load(name)
+    palette = result.get_palette()
+    result = transform.scale(result, (result.width*scale, result.height*scale))
+    result_flipped = transform.flip(result, True, False)
+    result.set_palette(palette)
+    result_flipped.set_palette(palette)
+    return result, result_flipped
+
+def load_scaled_flipped_indexed_image_palette(name: str): #, scale: int):
+    result = image.load(name)
+    palette = result.get_palette()
+    result = transform.scale(result, (result.width*scale, result.height*scale))
+    result_flipped = transform.flip(result, True, False)
+    result.set_palette(palette)
+    result_flipped.set_palette(palette)
+    return result, result_flipped, palette
 
 def add_non_colliding_position(class_type: type, size, entities: list[Entity], x_pos: int = None, y_pos: int = None, x_start = 0, x_end = None, y_start = 0, y_end = None):
     img = random.randint(0, 1)
@@ -156,29 +193,37 @@ def main():
 
     score_font = font.Font(font_name, scale*8)
 
-    mario_image_right, mario_image_left = load_scaled_flipped_image("mario.png")
+    mario_image_right, mario_image_left = load_scaled_flipped_indexed_image("mario.gif")
+    #mario_image_right.set_palette([(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255), (255, 255, 0, 255), (255, 0, 255, 255), (0, 255, 255, 255), (255, 255, 255, 255)])
 
-    mario_image_r1_right, mario_image_r1_left = load_scaled_flipped_image("mario_r1.png")
-    mario_image_r2_right, mario_image_r2_left = load_scaled_flipped_image("mario_r2.png")
-    mario_image_r3_right, mario_image_r3_left = load_scaled_flipped_image("mario_r3.png")
+    mario_image_r1_right, mario_image_r1_left = load_scaled_flipped_indexed_image("mario_r1.gif")
+    mario_image_r2_right, mario_image_r2_left = load_scaled_flipped_indexed_image("mario_r2.gif")
+    mario_image_r3_right, mario_image_r3_left = load_scaled_flipped_indexed_image("mario_r3.gif")
 
-    mario_image_j_right, mario_image_j_left = load_scaled_flipped_image("mario_j.png")
-    mario_image_t_right, mario_image_t_left = load_scaled_flipped_image("mario_t.png")
+    mario_image_j_right, mario_image_j_left = load_scaled_flipped_indexed_image("mario_j.gif")
+    mario_image_t_right, mario_image_t_left = load_scaled_flipped_indexed_image("mario_t.gif")
 
-    floor_brick = load_scaled_image("floor_brick.png")
-    brick = load_scaled_image("brick.png")
+    floor_brick = load_scaled_indexed_image("floor_brick.gif")
+    brick = load_scaled_indexed_image("brick.gif")
 
-    cloud_1 = load_scaled_image("cloud_1.png")
-    cloud_2 = load_scaled_image("cloud_2.png")
+    cloud_1 = load_scaled_indexed_image("cloud_1.gif")
+    cloud_2 = load_scaled_indexed_image("cloud_2.gif")
     Cloud.images = [cloud_1, cloud_2]
 
-    bush_1 = load_scaled_image("bush_1.png")
-    bush_2 = load_scaled_image("bush_2.png")
+    bush_1 = load_scaled_indexed_image("bush_1.gif")
+    bush_2, bush_palette = load_scaled_indexed_image_palette("bush_2.gif")
+    palette_0 = (((0, 0, 0), (16, 148, 0), (140, 214, 0)), ((8, 74, 0), (16, 148, 0), (140, 214, 0)), ((99, 99, 99), (172, 172, 172), (255, 255, 255)), ((255, 107, 206), (66, 66, 255), (181, 33, 123)), ((0, 0, 0), (181, 49, 33), (230, 156, 33)), ((173, 173,  173), (99, 99, 99), (255, 255, 255)))
+    # hill_palettes = (((8, 74, 0, 255), (8, 74, 0, 255), (16, 148, 0, 255)))
+    # bush_2.set_palette(((0, 0, 0, 255), (71, 193, 49, 255), (3, 229, 3, 255)))
     Bush.images = [bush_1, bush_2]
 
-    goomba_1 = load_scaled_image("goomba_1.png")
-    goomba_2 = load_scaled_image("goomba_2.png")
-    goomba_3 = load_scaled_image("goomba_3.png")
+    hill_1 = load_scaled_indexed_image("hill_1.gif")
+    hill_2 = load_scaled_indexed_image("hill_2.gif")
+    Hill.images = [hill_1, hill_2]
+
+    goomba_1 = load_scaled_indexed_image("goomba_1.gif")
+    goomba_2 = load_scaled_indexed_image("goomba_2.gif")
+    goomba_3 = load_scaled_indexed_image("goomba_3.gif")
     Goomba.images = [goomba_1, goomba_2, goomba_3]
 
     # Player vars
@@ -206,6 +251,7 @@ def main():
     scroll_speed = -0.25 * scale
     entities: list[Entity] = []
     frame = 0
+    palette = 0
 
     cloud_spawner = Spawner(2, init_scrollable(Cloud, size, scroll_speed, entities, 5))
     bush_spawner = Spawner(2, init_scrollable(Bush, size, scroll_speed, entities, 2, y_pos = size[1]-(64*scale)))
@@ -242,6 +288,10 @@ def main():
                     right = True
                     player_x_dir = 1
                     player_facing_right = True
+
+                elif ev.key == K_p:
+                    palette = (palette+1) % len(palette_0)
+                    Bush.set_palette(Bush, palette_0[palette])
 
             elif ev.type == KEYUP:
                 if ev.key == K_LEFT:
@@ -334,7 +384,7 @@ def main():
             num_tiles = item[3]*item[4]
             for j in range(num_tiles):
                 screen.blit(brick, (scale*16*(item[1] + (j%num_tiles)), scale*16*(item[2] + j//num_tiles), scale*16, scale*16))
-            world
+            world[i] = (item[0], scroll_speed/(16*scale) + item[1], item[2], item[3], item[4])
 
         """ Entity Update and Drawing """
         i = 0
@@ -366,10 +416,10 @@ def main():
                     player_image = mario_image_t_right if player_facing_right else mario_image_t_left
                 else:
                     player_image = mario_running_anim_right[player_running_frame] if player_facing_right else mario_running_anim_left[player_running_frame]
-            elif not player_running and abs(player_vx) > 0:
-                player_image = mario_image_t_right if player_facing_right else mario_image_t_left
-                print("p")
             else:
+            #elif not player_running and abs(player_vx) > 0:
+            #    player_image = mario_image_t_right if player_facing_right else mario_image_t_left
+            #else:
                 player_image = mario_image_right if player_facing_right else mario_image_left
         else:
             player_image = mario_image_j_right if player_facing_right else mario_image_j_left

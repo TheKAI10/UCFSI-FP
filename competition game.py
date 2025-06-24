@@ -2,7 +2,7 @@
 # 13 June 2025 (edit because I forgot header)
 # Mini game contest
 # Use left and right arrow keys to move and space bar or up arrow to jump
-
+import queue
 import sys, random
 from pygame import *
 import math
@@ -10,11 +10,17 @@ import math
 scale: int
 
 class Entity:
+    images: list[Surface]
+
     def draw(self, screen: Surface):
         pass
 
     def tick(self, scroll_speed, size):
         pass
+
+    def set_palette(self, palette):
+        for image in self.images:
+            image.set_palette(palette)
 
 class Scroller(Entity):
     images: list[Surface]
@@ -33,10 +39,6 @@ class Scroller(Entity):
     def tick(self, scroll_speed, size) -> bool:
         self.x += scroll_speed + self.speed
         return self.x > -self.img.width
-    
-    def set_palette(self, palette):
-        for image in self.images:
-            image.set_palette(palette)
 
 # "There's no such thing as compile time in python" - an idiot
 Cloud = type("Cloud", (Scroller,), {"speed": -0.5, "list": []})
@@ -44,8 +46,6 @@ Bush = type("Bush", (Scroller,), {"speed": 0, "list": []})
 Hill = type("Hill", (Scroller,), {"speed": 0, "list": []})
 
 class Goomba(Entity):
-    images: list[Surface]
-
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -125,19 +125,23 @@ def load_scaled_flipped_indexed_image_palette(name: str): #, scale: int):
     result_flipped.set_palette(palette)
     return result, result_flipped, palette
 
-def add_non_colliding_position(class_type: type, size, entities: list[Entity], x_pos: int = None, y_pos: int = None, x_start = 0, x_end = None, y_start = 0, y_end = None):
+def add_non_colliding_position(class_type: type, size, entities: list[Entity], scrollables: list[Scroller], x_pos: int = None, y_pos: int = None, x_start = 0, x_end = None, y_start = 0, y_end = None):
     img = random.randint(0, 1)
+    offset = 0
+
+    if class_type is Hill and img == 1:
+        offset += scale*3
 
     x_end = size[0] - class_type.images[img].width if x_end is None else x_end
-    y_end = size[1] - class_type.images[img].height - (scale*128) if y_end is None else y_end
+    y_end = size[1] - class_type.images[img].height - scale*128 if y_end is None else y_end
 
     x = random.randint(x_start, x_end)//4 * 4 if x_pos is None else x_pos
-    y = random.randint(y_start, y_end) if y_pos is None else y_pos
+    y = random.randint(y_start, y_end) if y_pos is None else y_pos - offset
     collision = True
 
     i = 0
     while collision:
-        for scrollable in class_type.list:
+        for scrollable in scrollables:
             if Rect(x, y, class_type.images[img].width, class_type.images[img].height).colliderect((scrollable.x, scrollable.y, scrollable.img.width, scrollable.img.height)):
                 collision = True
                 if x_pos is None: x = random.randint(0, size[0] - class_type.images[img].width)//4 * 4
@@ -150,11 +154,13 @@ def add_non_colliding_position(class_type: type, size, entities: list[Entity], x
 
         if i > 10: return
 
-    entities.append(class_type(x, y, img))
+    result = class_type(x, y, img)
+    entities.append(result)
+    scrollables.append(result)
 
-def init_scrollable(class_type: type, size, scroll_speed, entities, starting_amount, x_pos = None, y_pos = None):
+def init_scrollable(class_type: type, size, scroll_speed, entities, scrollables, starting_amount, x_pos = None, y_pos = None) -> int:
     for i in range(starting_amount):
-        add_non_colliding_position(class_type, size, entities, x_pos, y_pos)
+        add_non_colliding_position(class_type, size, entities, scrollables, x_pos, y_pos)
 
     return size[0]/((scroll_speed + class_type.speed)*-starting_amount)
 
@@ -164,7 +170,7 @@ def main():
     # Initiate pygame
     init()
 
-    font_name = font.get_default_font()
+    font_name = "font/super-mario-bros-nes.ttf"
 
     # Timing
     timer = time.Clock()
@@ -173,15 +179,30 @@ def main():
     # Set up display
     desktop_size = display.get_desktop_sizes()[0]
 
-    height = int(desktop_size[0] * (9/16))
-    if height < desktop_size[1]:
-        size = (desktop_size[0], height)
-    else:
-        size = (int(desktop_size[1] * 16/9), desktop_size[1])
+    # height = int(desktop_size[0] * (9/16))
+    # if height < desktop_size[1]:
+    #     size = (desktop_size[0], height)
+    # else:
+    #     size = (int(desktop_size[1] * 16/9), desktop_size[1])
 
     # Some weird bugs that I'm too lazy to debug happen when scale is not even
-    scale = size[0]//480
-    #scale = 4
+    # scale = size[0]//480
+    # scale = 4
+
+    screen_ratio = 4/3
+    #screen_ratio = 16/9
+    tiles_width = 16
+    tiles_height = int(tiles_width*(1/screen_ratio))
+
+    width = desktop_size[0] // (16*tiles_width)
+    height = desktop_size[1] // (16*tiles_height)
+
+    # print(desktop_size, width, height)
+
+    scale = 2**math.floor(math.log2(min(width, height)))
+    size = (16*tiles_width*scale, 16*tiles_height*scale)
+    # print(size)
+
     Cloud.speed = -0.125 * scale
 
     if size == desktop_size:
@@ -205,9 +226,11 @@ def main():
 
     floor_brick = load_scaled_indexed_image("floor_brick.gif")
     brick = load_scaled_indexed_image("brick.gif")
+    palette_1 = (((0, 0, 0), (156, 74, 0), (255, 204, 197)), ((0, 0, 0), (0, 123, 139), (181, 235, 242)), ((99, 99, 99), (173, 173, 173), (255, 255, 255)), ((0, 0, 0), (16, 148, 0), (189, 244, 171)))
 
     cloud_1 = load_scaled_indexed_image("cloud_1.gif")
     cloud_2 = load_scaled_indexed_image("cloud_2.gif")
+    palette_2 = (((0, 0, 0), (99, 173, 255), (255, 255, 255)), ((0, 123, 140), (99, 173, 255), (255, 255, 255)), ((99, 99, 99), (181, 49, 33), (255, 255, 255)), ((0, 0, 0), (66, 66, 255), (255, 255, 255)), ((0, 0, 0), (99, 173, 255), (255, 255, 255)), ((0, 0, 0), (99, 173, 255), (255, 255, 255)))
     Cloud.images = [cloud_1, cloud_2]
 
     bush_1 = load_scaled_indexed_image("bush_1.gif")
@@ -226,14 +249,21 @@ def main():
     goomba_3 = load_scaled_indexed_image("goomba_3.gif")
     Goomba.images = [goomba_1, goomba_2, goomba_3]
 
+    tile_images = [brick]
+
     # Player vars
     player_width = mario_image_right.get_width()
     player_height = mario_image_right.get_height()
     player_x = 96*scale
     player_y = size[1] - (32*scale) - player_height
+    prev_player_x = player_x
+    prev_player_y = player_y
     player_vx = 0
     player_vy = 0
-    player_jump_strength = -(4*scale)
+
+    # 3.741657386776, 4.472135955
+    player_min_jump_strength = -(65/3) #(4*scale)
+    player_max_jump_strength = -26
     player_on_ground = False
     gravity = 0.25*scale
     ground_height = size[1]-(48*scale)
@@ -250,18 +280,70 @@ def main():
 
     scroll_speed = -0.25 * scale
     entities: list[Entity] = []
+    scrollables: list[Scroller] = []
     frame = 0
-    palette = 0
+    palette02 = 0
+    palette1 = 0
+    collided = False
 
-    cloud_spawner = Spawner(2, init_scrollable(Cloud, size, scroll_speed, entities, 5))
-    bush_spawner = Spawner(2, init_scrollable(Bush, size, scroll_speed, entities, 2, y_pos = size[1]-(64*scale)))
+    cloud_spawner = Spawner(2, init_scrollable(Cloud, size, scroll_speed, entities, scrollables, 5))
+    bush_spawner = Spawner(2, init_scrollable(Bush, size, scroll_speed, entities, scrollables, 2, y_pos = size[1]-(64*scale)))
+    hill_spawner = Spawner(2, init_scrollable(Hill, size, scroll_speed, entities, scrollables, 2, y_pos = size[1]-(64*scale)))
     goomba_spawner = Spawner(2, 64*scale)
 
-    squished = 0
+    score = 0
     units = 0
     floor_sub = 0
 
-    world = [(0, 16, 10, 5, 2)]
+    #world = [(0, 16, 10, 5, 2)]
+    world_x = 0
+    tiles_per_section = 4
+    tiles_since_section = 0
+
+    tiles: queue[queue[int]] = [[0] * (tiles_width + 1 + tiles_per_section) for i in range(tiles_height)]
+    tiles[2][2] = 1
+    print(tiles)
+
+    player_tiles = (int((player_x + player_vx - world_x) // (scale*16)), int((player_y + player_vy) // (scale*16))), (int((player_x + player_vx + player_width - world_x) // (scale*16)), int((player_y + player_vy) // (scale*16))), (int((player_x + player_vx + player_width - world_x) // (scale*16)), int((player_y + player_vy + player_height) // (scale*16))), (int((player_x + player_vx - world_x) // (scale*16)), int((player_y + player_vy + player_height) // (scale*16)))
+
+    sections = [
+        [
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 1, 1, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 1, 1, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+        ],
+        [
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 1, 1, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+        ],
+        [
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 1, 1, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 1, 1, 0],
+        ],
+    ]
 
     while True:
         # fill background
@@ -290,8 +372,13 @@ def main():
                     player_facing_right = True
 
                 elif ev.key == K_p:
-                    palette = (palette+1) % len(palette_0)
-                    Bush.set_palette(Bush, palette_0[palette])
+                    palette02 = (palette02+1) % len(palette_0)
+                    palette1 = (palette1+1) % len(palette_1)
+                    Bush.set_palette(Bush, palette_0[palette02])
+                    Hill.set_palette(Hill, palette_0[palette02])
+                    Cloud.set_palette(Cloud, palette_2[palette02])
+                    floor_brick.set_palette(palette_1[palette1])
+                    brick.set_palette(palette_1[palette1])
 
             elif ev.type == KEYUP:
                 if ev.key == K_LEFT:
@@ -317,7 +404,7 @@ def main():
 
 
         """ Player Update """
-        scroll_speed = (((size[0] - player_width - (192*scale)) - player_x) // (32*scale))/(4/scale) if player_x > size[0] - player_width - (192*scale) else -0.25*scale
+        scroll_speed = (((size[0] - player_width - ((size[0]/10)*scale)) - player_x) // (32*scale))/(4/scale) if player_x > size[0] - player_width - ((size[0]/10)*scale) else -0.25*scale
         units += scroll_speed
 
         player_running = left or right
@@ -325,18 +412,16 @@ def main():
         if player_running and not frame % 6:
             player_running_frame += 1 if player_running_frame < 3 else -3
 
-        player_was_on_ground = player_on_ground
-        player_on_ground = player_y >= ground_height
-
         if to_jump and player_on_ground:
-            player_vy = player_jump_strength
-
-        if player_on_ground and not player_was_on_ground:
-            player_vy = 0
-            player_y = ground_height
+            speed = abs(player_vx)/player_x_speed
+            player_vy = speed*player_max_jump_strength + (1-speed)*player_min_jump_strength
 
         if not player_on_ground:
             player_vy += gravity
+
+        if player_y + player_vy >= ground_height and player_vy >= 0:# and not player_was_on_ground and not collided:
+            player_vy = 0
+            player_y = ground_height
 
         if player_x_dir != 0:
             if (player_x_dir == -1 and player_vx > -player_x_speed) or (player_x_dir == 1 and player_vx < player_x_speed):
@@ -349,42 +434,66 @@ def main():
         if player_vx == 0 and math.floor(player_x) + floor_sub != player_x:
             player_x = math.floor(player_x) + floor_sub
 
+        #prev_tiles = player_tiles
+        player_tiles = (int((player_x + player_vx - world_x) // (scale*16)), int((player_y + player_vy) // (scale*16))), (int((player_x + player_vx + player_width - world_x) // (scale*16)), int((player_y + player_vy) // (scale*16))), (int((player_x + player_vx + player_width - world_x) // (scale*16)), int((player_y + player_vy + player_height) // (scale*16))), (int((player_x + player_vx - world_x) // (scale*16)), int((player_y + player_vy + player_height) // (scale*16)))
+        # tiles_to_check: set = {player_tiles[0], player_tiles[1], player_tiles[2], player_tiles[3]}
+
+        #draw.polygon(screen, (0, 255, 0), ((player_tiles[0][0]*16*scale + world_x, player_tiles[0][1]*16*scale), (player_tiles[1][0]*16*scale + world_x, player_tiles[1][1]*16*scale), (player_tiles[2][0]*16*scale + world_x, player_tiles[2][1]*16*scale), (player_tiles[3][0]*16*scale + world_x, player_tiles[3][1]*16*scale)))
+
+        #for player_tile in player_tiles:
+        #    for i in range(3):
+        #        for j in range(3):
+        #            tiles_to_check.add((player_tile[0] + i-1, player_tile[1] + j-1))
+
+
+
+        collided = False
+        player_on_ground = False
+
+        for i in range(len(player_tiles)):
+            tile = player_tiles[i]
+            #prev_tile = prev_tiles[i]
+
+            if tiles[tile[1]][tile[0]]:
+                collided = True
+                if (player_x + player_width <= (tile[0])*16*scale + world_x or player_x >= (tile[0]+1)*16*scale + world_x) and not (player_y >= tile[1]*16*scale or player_y + player_height <= tile[1]*16*scale):
+                    player_vx = 0
+                    #print(player_x, tile[0])
+                    # print(player_x, tile[0], world_x, (tile[0]-1)*16*scale + world_x)
+                    player_x = (tile[0]+1)*16*scale + world_x if player_x >= (tile[0]+1)*16*scale + world_x else (tile[0]-1)*16*scale + world_x
+
+                elif player_y >= tile[1]*16*scale:
+                    player_vy = 0
+                    player_y = (tile[1]+1)*16*scale
+
+                elif player_y + player_height <= tile[1]*16*scale:
+                    player_on_ground = True
+                    player_y = (tile[1] - 1)*16*scale
+                    player_vy = 0
+
+        # print(tiles_to_check)
+
         prev_player_x = player_x
         prev_player_y = player_y
         player_x = min(player_x + player_vx + scroll_speed, size[0] - player_width)
+        #print(player_vy)
         player_y += player_vy
         player_rect = Rect(player_x, player_y, player_width, player_height)
 
+        player_on_ground = player_on_ground or player_y >= ground_height
+
         """ Spawning """
         if cloud_spawner.spawn(scroll_speed):
-            add_non_colliding_position(Cloud, size, entities, size[0], x_start=size[0], x_end=size[0]*2)
+            add_non_colliding_position(Cloud, size, entities, scrollables, size[0], x_start=size[0], x_end=size[0]*2)
 
         if bush_spawner.spawn(scroll_speed):
-            add_non_colliding_position(Bush, size, entities, size[0], size[1]-(64*scale), x_start=size[0], x_end=size[0]*2)
+            add_non_colliding_position(Bush, size, entities, scrollables, size[0], size[1]-(64*scale), x_start=size[0], x_end=size[0]*2)
+
+        if hill_spawner.spawn(scroll_speed):
+            add_non_colliding_position(Hill, size, entities, scrollables, size[0], size[1]-(64*scale), x_start=size[0], x_end=size[0]*2)
 
         if goomba_spawner.spawn(scroll_speed):
             entities.append(Goomba(size[0], size[1]-(48*scale)))
-
-        """ World Drawing """
-        for i in range(size[0]//(1024*scale) + math.ceil(size[0]/(512*scale))):
-
-            #x = -(-(units) % (512*scale)) + (1024*scale)*i + 2/scale
-            #if x < 0:
-            #    print(x, "t:",(x * scale * 4) % (scale * 2))
-            #    if (x * scale * 4) % (scale * 2):
-            #        x += 1/(scale*4)
-            #        print(x)
-
-
-            screen.blit(floor_brick, (math.floor(-(-units % (512*scale)) + (1024*scale)*i + 2/scale), size[1]-(16*scale), 1024*scale, 16*scale))
-            screen.blit(floor_brick, (math.floor(-(-units % (512*scale)) + (1024*scale)*i + 2/scale), size[1]-(32*scale), 1024*scale, 16*scale))
-
-        for i in range(len(world)):
-            item = world[i]
-            num_tiles = item[3]*item[4]
-            for j in range(num_tiles):
-                screen.blit(brick, (scale*16*(item[1] + (j%num_tiles)), scale*16*(item[2] + j//num_tiles), scale*16, scale*16))
-            world[i] = (item[0], scroll_speed/(16*scale) + item[1], item[2], item[3], item[4])
 
         """ Entity Update and Drawing """
         i = 0
@@ -397,16 +506,16 @@ def main():
             if type(entity) == Goomba and player_rect.colliderect(Rect(entity.x, entity.y, 16*scale, 16*scale)):
                     if prev_player_y+player_height-(8*scale) <= entity.y and not entity.squished and player_vy > 0:
                         entity.squished = True
-                        squished += 1
+                        score += 100
                     elif not entity.squished:
-                        print("You squished", squished, "goombas")
+                        print("You squished", score, "goombas")
                         quit_g()
 
             entity.draw(screen)
             i += 1
 
         if player_x < 0:
-            print("You squished", squished, "goombas")
+            print("You squished", score, "goombas")
             quit_g()
 
         """ Player Animation and Drawing"""
@@ -427,11 +536,71 @@ def main():
 
         screen.blit(player_image, (player_x, player_y, player_width, player_height))
 
+        # draw.line(screen, (0, 0, 0), (1024, 0), (1024, size[1]))
+
+        """ World Drawing """
+        world_x += scroll_speed
+        #print(world_x)
+        if world_x <= -scale*16:
+            world_x += scale*16
+
+            for row in tiles:
+                row.pop(0)
+                # row.append(0)
+
+            #print(tiles)
+
+            tiles_since_section += 1
+
+            if tiles_since_section == tiles_per_section:
+                tiles_since_section = 0
+                section = random.randint(0, len(sections)-1)
+
+                for i in range(len(tiles)):
+                    row = tiles[i]
+
+                    if i > 1:
+                        for j in range(tiles_per_section):
+                            row.append(sections[section][(tiles_height-i-1)][j])
+
+                    else:
+                        row.append(0)
+                        row.append(0)
+                        row.append(0)
+                        row.append(0)
+
+        for j in range(len(tiles)):
+            for i in range(len(tiles[0])):
+                tile = tiles[j][i]
+                if tile:
+                    screen.blit(tile_images[tile-1], (i*scale*16 + world_x, j*scale*16, 16, 16))
+
+
+        for i in range(-1, size[0]//(1024*scale) + math.ceil(size[0]/(512*scale))):
+
+            #x = -(-(units) % (512*scale)) + (1024*scale)*i + 2/scale
+            #if x < 0:
+            #    print(x, "t:",(x * scale * 4) % (scale * 2))
+            #    if (x * scale * 4) % (scale * 2):
+            #        x += 1/(scale*4)
+            #        print(x)
+
+
+            screen.blit(floor_brick, (math.floor(-(-units % (512*scale)) + (1024*scale)*i + scale/2), size[1]-(16*scale), 1024*scale, 16*scale))
+            screen.blit(floor_brick, (math.floor(-(-units % (512*scale)) + (1024*scale)*i + scale/2), size[1]-(32*scale), 1024*scale, 16*scale))
+
+        """for i in range(len(world)):
+            item = world[i]
+            num_tiles = item[3]*item[4]
+            for j in range(num_tiles):
+                screen.blit(brick, (scale*16*(item[1] + (j%num_tiles)), scale*16*(item[2] + j//num_tiles), scale*16, scale*16))
+            world[i] = (item[0], scroll_speed/(16*scale) + item[1], item[2], item[3], item[4])"""
+
         """ UI Drawing """
-        score_text_string = "Score: " + str(squished)
-        score_text = score_font.render(score_text_string, True, (0, 0, 0))
+        score_text_string = "Score:" + str(score)
+        score_text = score_font.render(score_text_string, True, (255, 255, 255))
         score_text_rect = score_text.get_rect()
-        score_text_rect.center = (size[0] - score_text_rect.width, 50)
+        score_text_rect.center = (size[0] - score_text_rect.width/2 - scale*16, 50)
         screen.blit(score_text, score_text_rect)
 
         floor_sub = -(-(units) % (512*scale)) + (1024*scale)*i + 2/scale - math.floor(-(-(units) % (512*scale)) + (1024*scale)*i + 2/scale)

@@ -297,12 +297,8 @@ def main():
 
     #world = [(0, 16, 10, 5, 2)]
     world_x = 0
-    tiles_per_section = 4
-    tiles_since_section = 0
-
-    tiles: queue[queue[int]] = [[0] * (tiles_width + 1 + tiles_per_section) for i in range(tiles_height)]
-    tiles[2][2] = 1
-    print(tiles)
+    # tiles_per_section = 4
+    # tiles_since_section = 0
 
     player_tiles = (int((player_x + player_vx - world_x) // (scale*16)), int((player_y + player_vy) // (scale*16))), (int((player_x + player_vx + player_width - world_x) // (scale*16)), int((player_y + player_vy) // (scale*16))), (int((player_x + player_vx + player_width - world_x) // (scale*16)), int((player_y + player_vy + player_height) // (scale*16))), (int((player_x + player_vx - world_x) // (scale*16)), int((player_y + player_vy + player_height) // (scale*16)))
 
@@ -311,8 +307,8 @@ def main():
             [0, 0, 0, 0],
             [0, 0, 0, 0],
             [0, 0, 0, 0],
-            [0, 0, 0, 0],
             [0, 1, 1, 0],
+            [0, 0, 0, 0],
             [0, 0, 0, 0],
             [0, 0, 0, 0],
             [0, 1, 1, 0],
@@ -324,9 +320,9 @@ def main():
             [0, 0, 0, 0],
             [0, 0, 0, 0],
             [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
             [0, 1, 1, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
             [0, 0, 0, 0],
             [0, 0, 0, 0],
             [0, 0, 0, 0],
@@ -336,14 +332,26 @@ def main():
             [0, 0, 0, 0],
             [0, 0, 0, 0],
             [0, 0, 0, 0],
-            [0, 1, 1, 0],
             [0, 0, 0, 0],
             [0, 0, 0, 0],
             [0, 0, 0, 0],
             [0, 0, 0, 0],
-            [0, 1, 1, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
         ],
     ]
+
+    max = 0
+    for section in sections:
+        if len(section[0]) > max:
+            max = len(section[0])
+
+    tiles: queue[queue[int]] = [[0] * (tiles_width + 1 + max) for i in range(tiles_height)]
+    tiles[2][2] = 1
+    print(tiles)
+
+    next_section = random.randint(0, len(sections)-1)
+    tiles_until_section = len(sections[next_section][0])
 
     while True:
         # fill background
@@ -453,23 +461,29 @@ def main():
         for i in range(len(player_tiles)):
             tile = player_tiles[i]
             #prev_tile = prev_tiles[i]
+            was_to_left = player_x + player_width <= (tile[0])*16*scale + world_x
+            was_to_right = player_x >= (tile[0]+1)*16*scale + world_x
+            was_below = player_y >= tile[1]*16*scale
+            was_above = player_y + player_height <= tile[1]*16*scale
+            num_true = was_to_left + was_to_right + was_below + was_above
 
             if tiles[tile[1]][tile[0]]:
                 collided = True
-                if (player_x + player_width <= (tile[0])*16*scale + world_x or player_x >= (tile[0]+1)*16*scale + world_x) and not (player_y >= tile[1]*16*scale or player_y + player_height <= tile[1]*16*scale):
-                    player_vx = 0
-                    #print(player_x, tile[0])
-                    # print(player_x, tile[0], world_x, (tile[0]-1)*16*scale + world_x)
-                    player_x = (tile[0]+1)*16*scale + world_x if player_x >= (tile[0]+1)*16*scale + world_x else (tile[0]-1)*16*scale + world_x
+                if num_true == 1:
+                    if was_to_left or was_to_right:
+                        player_vx = 0
+                        #print(player_x, tile[0])
+                        # print(player_x, tile[0], world_x, (tile[0]-1)*16*scale + world_x)
+                        player_x = (tile[0]+1)*16*scale + world_x if player_x >= (tile[0]+1)*16*scale + world_x else (tile[0]-1)*16*scale + world_x
 
-                elif player_y >= tile[1]*16*scale:
-                    player_vy = 0
-                    player_y = (tile[1]+1)*16*scale
+                    if was_below and player_vy < 0:
+                        player_vy = 0
+                        player_y = (tile[1]+1)*16*scale
 
-                elif player_y + player_height <= tile[1]*16*scale:
-                    player_on_ground = True
-                    player_y = (tile[1] - 1)*16*scale
-                    player_vy = 0
+                    if was_above:
+                        player_on_ground = True
+                        player_y = (tile[1] - 1)*16*scale
+                        player_vy = 0
 
         # print(tiles_to_check)
 
@@ -550,24 +564,25 @@ def main():
 
             #print(tiles)
 
-            tiles_since_section += 1
+            # tiles_since_section += 1
+            tiles_until_section -= 1
 
-            if tiles_since_section == tiles_per_section:
-                tiles_since_section = 0
-                section = random.randint(0, len(sections)-1)
+            if not tiles_until_section:
+                # tiles_since_section = 0
 
                 for i in range(len(tiles)):
                     row = tiles[i]
 
-                    if i > 1:
-                        for j in range(tiles_per_section):
-                            row.append(sections[section][(tiles_height-i-1)][j])
+                    if i < len(tiles)-2:
+                        for j in range(len(sections[next_section][0])):
+                            row.append(sections[next_section][(i)][j])
 
                     else:
-                        row.append(0)
-                        row.append(0)
-                        row.append(0)
-                        row.append(0)
+                        for i in range(len(sections[next_section][0])):
+                            row.append(0)
+
+                next_section = random.randint(0, len(sections)-1)
+                tiles_until_section = len(sections[next_section][0])
 
         for j in range(len(tiles)):
             for i in range(len(tiles[0])):

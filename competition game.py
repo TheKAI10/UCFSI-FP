@@ -308,9 +308,9 @@ def main():
             [0, 0, 0, 0],
             [0, 0, 0, 0],
             [0, 1, 1, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 1, 0, 0],
+            [0, 1, 0, 0],
             [0, 1, 1, 0],
             [0, 0, 0, 0],
             [0, 0, 0, 0],
@@ -440,6 +440,7 @@ def main():
                 player_vx = 0
 
         if player_vx == 0 and math.floor(player_x) + floor_sub != player_x:
+            print("i", math.floor(player_x) + floor_sub)
             player_x = math.floor(player_x) + floor_sub
 
         #prev_tiles = player_tiles
@@ -463,32 +464,103 @@ def main():
             #prev_tile = prev_tiles[i]
             was_to_left = player_x + player_width <= (tile[0])*16*scale + world_x
             was_to_right = player_x >= (tile[0]+1)*16*scale + world_x
-            was_below = player_y >= tile[1]*16*scale
+            was_below = player_y >= (tile[1]+1)*16*scale
             was_above = player_y + player_height <= tile[1]*16*scale
             num_true = was_to_left + was_to_right + was_below + was_above
 
+
             if tiles[tile[1]][tile[0]]:
                 collided = True
+                print(num_true, was_to_left, was_to_right, was_below, was_above, player_x, (tile[0]+1)*16*scale + world_x, player_x + player_width, (tile[0])*16*scale + world_x)
+                #if num_true == 0:
+                print(prev_player_x, prev_player_y, player_vx, player_vy)
                 if num_true == 1:
                     if was_to_left or was_to_right:
                         player_vx = 0
                         #print(player_x, tile[0])
                         # print(player_x, tile[0], world_x, (tile[0]-1)*16*scale + world_x)
-                        player_x = (tile[0]+1)*16*scale + world_x if player_x >= (tile[0]+1)*16*scale + world_x else (tile[0]-1)*16*scale + world_x
+                        print("a", (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x)
+                        player_x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
 
-                    if was_below and player_vy < 0:
+                    elif was_below:
                         player_vy = 0
                         player_y = (tile[1]+1)*16*scale
 
-                    if was_above:
+                    else:
                         player_on_ground = True
                         player_y = (tile[1] - 1)*16*scale
                         player_vy = 0
+
+                elif num_true == 2:
+                    corner_x = tile[0]*16*scale if was_to_left else (tile[0]+1)*16*scale
+                    corner_y = tile[1]*16*scale if was_above else (tile[1]+1)*16*scale
+
+                    if was_to_left or was_to_right:
+                        if was_below and tiles[tile[1] - 1][tile[0]]:
+                            print("a")
+                            if (tiles[tile[1]][tile[0] - 1] and was_to_left) or (tiles[tile[1]][tile[0] + 1] and was_to_right):
+                                print("b")
+                                player_vy = 0
+                                player_y = (tile[1]+1)*16*scale
+                            player_vx = 0
+                            print("b", (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x)
+                            player_x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
+
+                        elif was_above and tiles[tile[1] + 1][tile[0]]:
+                            print("c", player_x, (tile[0]+1)*16*scale + world_x, (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x)
+                            if (tiles[tile[1]][tile[0] - 1] and was_to_left) or (tiles[tile[1]][tile[0] + 1] and was_to_right):
+                                print("d", tiles[tile[1]][tile[0] - 1], was_to_left, tiles[tile[1]][tile[0] + 1], was_to_right)
+                                player_on_ground = True
+                                player_y = (tile[1] - 1)*16*scale
+                                player_vy = 0
+                            player_vx = 0
+                            print("c", (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x)
+                            player_x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
+
+                    elif not ((player_x - world_x + (player_width if was_to_left else 0) == corner_x and player_vx == 0) or (player_y + (player_height if was_above else 0) == corner_y and player_vy == 0)):
+                        slope = player_vy/player_vx if player_vx != 0 else 1e20
+                        test = slope*(corner_x - (player_x - world_x + (player_width if was_to_left else 0))) - corner_y + player_y + (player_height if was_above else 0)
+
+                        if was_to_left and was_below:
+                            if test < 0:
+                                player_vx = 0
+                                print("d", (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x)
+                                player_x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
+                            elif test > 0:
+                                player_vy = 0
+                                player_y = (tile[1]+1)*16*scale
+                            elif random.randint(0, 1):
+                                player_vx = 0
+                                print("e", (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x)
+                                player_x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
+                            else:
+                                player_vy = 0
+                                player_y = (tile[1]+1)*16*scale
+
+                        elif was_to_right and was_below:
+                            if test < 0:
+                                player_vx = 0
+                                print("f", (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x)
+                                player_x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
+                            elif test > 0:
+                                player_vy = 0
+                                player_y = (tile[1]+1)*16*scale
+                            elif random.randint(0, 1):
+                                player_vx = 0
+                                print("g", (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x)
+                                player_x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
+                            else:
+                                player_vy = 0
+                                player_y = (tile[1]+1)*16*scale
+
+
+                        print(test, tile, player_x, player_y, player_vx, player_vy, world_x, corner_x, corner_y, player_width if was_to_left else 0, player_height if was_above else 0, was_to_left, was_to_right, was_above, was_below, player_y + (player_height if was_above else 0), player_y + (player_height if was_above else 0) == corner_y, player_vy == 0)
 
         # print(tiles_to_check)
 
         prev_player_x = player_x
         prev_player_y = player_y
+        print("h", min(player_x + player_vx + scroll_speed, size[0] - player_width))
         player_x = min(player_x + player_vx + scroll_speed, size[0] - player_width)
         #print(player_vy)
         player_y += player_vy

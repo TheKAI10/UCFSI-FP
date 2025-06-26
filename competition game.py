@@ -1,9 +1,9 @@
 # Nathan Gorman
-# 13 June 2025 (edit because I forgot header)
-# Mini game contest
+# 26 June 2025
+# Final Project
 # Use left and right arrow keys to move and space bar or up arrow to jump
 
-# Note: this uses the colors from nestopia
+# Note: this uses the colors from nestopia?
 import queue
 import sys, random
 from pygame import *

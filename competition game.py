@@ -88,76 +88,77 @@ class Goomba(Entity):
         self.on_ground = False
 
         for i in range(len(self.tiles)):
-            if tile[0] <
             tile = self.tiles[i]
-            block_type = tiles[tile[1]][tile[0]][0]
-            was_to_left = self.x + self.width <= (tile[0])*16*scale + world_x
-            was_to_right = self.x >= (tile[0]+1)*16*scale + world_x
-            was_below = self.y >= (tile[1]+1)*16*scale
-            was_above = self.y + self.height <= tile[1]*16*scale
-            num_true = was_to_left + was_to_right + was_below + was_above
 
-            if self.collidable[block_type]:
-                if num_true == 1:
-                    if was_to_left or was_to_right:
-                        self.x_dir *= -1
-                        self.vx = 0
-                        self.x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
+            if tile[0] < len(tiles[0]):
+                block_type = tiles[tile[1]][tile[0]][0]
+                was_to_left = self.x + self.width <= (tile[0])*16*scale + world_x
+                was_to_right = self.x >= (tile[0]+1)*16*scale + world_x
+                was_below = self.y >= (tile[1]+1)*16*scale
+                was_above = self.y + self.height <= tile[1]*16*scale
+                num_true = was_to_left + was_to_right + was_below + was_above
 
-                    elif was_below:
-                        self.vy = 0
-                        self.y = (tile[1]+1)*16*scale
+                if self.collidable[block_type]:
+                    if num_true == 1:
+                        if was_to_left or was_to_right:
+                            self.x_dir *= -1
+                            self.vx = 0
+                            self.x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
 
-                    else:
-                        self.on_ground = True
-                        self.y = (tile[1] - 1)*16*scale
-                        self.vy = 0
-
-                elif num_true == 2:
-                    corner_x = tile[0]*16*scale if was_to_left else (tile[0]+1)*16*scale
-                    corner_y = tile[1]*16*scale if was_above else (tile[1]+1)*16*scale
-                    check_corner = True
-
-                    if self.collidable[tiles[tile[1] - 1][tile[0]][0]]:
-                        self.vx = 0
-                        self.x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
-                        check_corner = False
-
-                        if was_below and (self.collidable[tiles[tile[1]][tile[0] - 1][0]] and was_to_left) or (self.collidable[tiles[tile[1]][tile[0] + 1][0]] and was_to_right):
+                        elif was_below:
                             self.vy = 0
                             self.y = (tile[1]+1)*16*scale
 
-                        elif was_above and (self.collidable[tiles[tile[1]][tile[0] - 1][0]] and was_to_left) or (self.collidable[tiles[tile[1]][tile[0] + 1][0]] and was_to_right):
+                        else:
                             self.on_ground = True
                             self.y = (tile[1] - 1)*16*scale
                             self.vy = 0
 
-                    if check_corner and not ((self.x - world_x + (self.width if was_to_left else 0) == corner_x and self.vx == 0) or (self.y + (self.height if was_above else 0) == corner_y and self.vy == 0)):
-                        slope = self.vy/self.vx if self.vx != 0 else 1e20
-                        test = slope*(corner_x - (self.x - world_x + (self.width if was_to_left else 0))) - corner_y + self.y + (self.height if was_above else 0)
+                    elif num_true == 2:
+                        corner_x = tile[0]*16*scale if was_to_left else (tile[0]+1)*16*scale
+                        corner_y = tile[1]*16*scale if was_above else (tile[1]+1)*16*scale
+                        check_corner = True
 
-                        if was_below:
-                            if test > 0:
-                                self.vx = 0
-                                self.x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
-                            elif test < 0:
-                                self.vy += self.gravity
-                                tiles[tile[1]][tile[0]][1] = self.y + self.vy - (tile[1]+1)*16*scale
-                            elif random.randint(0, 1):
-                                self.vx = 0
-                                self.x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
-                            else:
+                        if self.collidable[tiles[tile[1] - 1][tile[0]][0]]:
+                            self.vx = 0
+                            self.x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
+                            check_corner = False
+
+                            if was_below and (self.collidable[tiles[tile[1]][tile[0] - 1][0]] and was_to_left) or (self.collidable[tiles[tile[1]][tile[0] + 1][0]] and was_to_right):
                                 self.vy = 0
                                 self.y = (tile[1]+1)*16*scale
 
-                        else:
-                            if test < 0 or (not (test > 0) and random.randint(0, 1)):
-                                self.vx = 0
-                                self.x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
-                            else:
+                            elif was_above and (self.collidable[tiles[tile[1]][tile[0] - 1][0]] and was_to_left) or (self.collidable[tiles[tile[1]][tile[0] + 1][0]] and was_to_right):
                                 self.on_ground = True
                                 self.y = (tile[1] - 1)*16*scale
                                 self.vy = 0
+
+                        if check_corner and not ((self.x - world_x + (self.width if was_to_left else 0) == corner_x and self.vx == 0) or (self.y + (self.height if was_above else 0) == corner_y and self.vy == 0)):
+                            slope = self.vy/self.vx if self.vx != 0 else 1e20
+                            test = slope*(corner_x - (self.x - world_x + (self.width if was_to_left else 0))) - corner_y + self.y + (self.height if was_above else 0)
+
+                            if was_below:
+                                if test > 0:
+                                    self.vx = 0
+                                    self.x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
+                                elif test < 0:
+                                    self.vy += self.gravity
+                                    tiles[tile[1]][tile[0]][1] = self.y + self.vy - (tile[1]+1)*16*scale
+                                elif random.randint(0, 1):
+                                    self.vx = 0
+                                    self.x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
+                                else:
+                                    self.vy = 0
+                                    self.y = (tile[1]+1)*16*scale
+
+                            else:
+                                if test < 0 or (not (test > 0) and random.randint(0, 1)):
+                                    self.vx = 0
+                                    self.x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
+                                else:
+                                    self.on_ground = True
+                                    self.y = (tile[1] - 1)*16*scale
+                                    self.vy = 0
 
         self.x = self.x + self.vx + scroll_speed
         self.y += self.vy
@@ -232,7 +233,7 @@ def load_scaled_flipped_indexed_image_palette(name: str): #, scale: int):
     result_flipped.set_palette(palette)
     return result, result_flipped, palette
 
-def add_non_colliding_position(class_type: type, size, entities: list[Entity], scrollables: list[Scroller], x_pos: int = None, y_pos: int = None, x_start = 0, x_end = None, y_start = 0, y_end = None):
+def add_non_colliding_position(class_type: type, size, entities: list[Entity], x_pos: int = None, y_pos: int = None, x_start = 0, x_end = None, y_start = 0, y_end = None):
     img = random.randint(0, 1)
     offset = 0
 
@@ -248,8 +249,8 @@ def add_non_colliding_position(class_type: type, size, entities: list[Entity], s
 
     i = 0
     while collision:
-        for scrollable in scrollables:
-            if Rect(x, y, class_type.images[img].width, class_type.images[img].height).colliderect((scrollable.x, scrollable.y, scrollable.img.width, scrollable.img.height)):
+        for entity in entities:
+            if Rect(x, y, class_type.images[img].width, class_type.images[img].height).colliderect((entity.x, entity.y, entity.img.width, entity.img.height)):
                 collision = True
                 if x_pos is None: x = random.randint(0, size[0] - class_type.images[img].width)//4 * 4
                 if y_pos is None: y = random.randint(0, size[1] - class_type.images[img].height - (scale*128))//4 * 4
@@ -262,12 +263,12 @@ def add_non_colliding_position(class_type: type, size, entities: list[Entity], s
         if i > 10: return
 
     result = class_type(x, y, img)
+    # entities.append(result)
     entities.append(result)
-    scrollables.append(result)
 
-def init_scrollable(class_type: type, size, scroll_speed, entities, scrollables, starting_amount, x_pos = None, y_pos = None) -> int:
+def init_scrollable(class_type: type, size, scroll_speed, scrollables, starting_amount, x_pos = None, y_pos = None) -> int:
     for i in range(starting_amount):
-        add_non_colliding_position(class_type, size, entities, scrollables, x_pos, y_pos)
+        add_non_colliding_position(class_type, size, scrollables, x_pos, y_pos)
 
     return size[0]/((scroll_speed + class_type.speed)*-starting_amount)
 
@@ -387,9 +388,9 @@ def main():
     mini_coin.set_palette(palette_3[0][0])
     qm_block.set_palette(palette_3[0][0])
 
-    tile_images = [brick_1, brick_2, coin, qm_block, block_1, block_1]
+    tile_images = [brick_1, brick_2, coin, qm_block, block_1, block_1, mario_image]
     pushable = [2, 4, 5]
-    collidable = [0, 1, 1, 0, 1, 1, 1]
+    collidable = [0, 1, 1, 0, 1, 1, 1, 0]
 
     # Player vars
     player_width = mario_image_right.get_width()
@@ -401,11 +402,12 @@ def main():
     player_vx = 0
     player_vy = 0
 
-    # 3.741657386776, 4.472135955
-    player_min_jump_strength = -(65/3) * (scale/4) #(4*scale)
-    player_max_jump_strength = -13 * (scale/2)
     player_on_ground = False
-    gravity = 0.25*scale
+    gravity = 1
+
+    player_min_jump_strength = (-419/24) # * math.sqrt(scale)# -math.sqrt(scale*gravity*(3.4*8*scale))#-(65/3) * (scale/4) #(4*scale)
+    player_max_jump_strength = -21.5344826 -0.001 # -13 * (scale/2)
+
     ground_height = size[1]-(48*scale)
     player_x_speed = 1.5*scale
     player_x_dir = 0
@@ -427,9 +429,9 @@ def main():
     palette = 0
     #collided = False
 
-    cloud_spawner = Spawner(2, init_scrollable(Cloud, size, scroll_speed, entities, scrollables, 5))
-    bush_spawner = Spawner(2, init_scrollable(Bush, size, scroll_speed, entities, scrollables, 2, y_pos = size[1]-(64*scale)))
-    hill_spawner = Spawner(2, init_scrollable(Hill, size, scroll_speed, entities, scrollables, 2, y_pos = size[1]-(64*scale)))
+    cloud_spawner = Spawner(2, init_scrollable(Cloud, size, scroll_speed, scrollables, 5))
+    bush_spawner = Spawner(2, init_scrollable(Bush, size, scroll_speed, scrollables, 2, y_pos = size[1]-(64*scale)))
+    hill_spawner = Spawner(2, init_scrollable(Hill, size, scroll_speed, scrollables, 2, y_pos = size[1]-(64*scale)))
     goomba_spawner = Spawner(2, 64*scale)
 
     score = 0
@@ -499,10 +501,10 @@ def main():
             [0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 7, 0, 0],
             [0, 0, 3, 3, 0, 0],
-            [0, 0, 3, 3, 0, 0],
-            [0, 2, 4, 4, 2, 0],
+            [0, 2, 3, 3, 2, 0],
+            [0, 1, 1, 1, 1, 0],
             [0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0],
@@ -512,7 +514,8 @@ def main():
     for i in range(len(sections)):
         for j in range(len(sections[i])):
             for k in range(len(sections[i][j])):
-                sections[i][j][k] = [sections[i][j][k], 0]
+                if type(sections[i][j][k]) is int:
+                    sections[i][j][k] = [sections[i][j][k], 0]
 
     max_section_width = 0
     for section in sections:
@@ -520,6 +523,7 @@ def main():
             max_section_width = len(section[0])
 
     tiles: queue[queue[int, int]] = [[[0, 0]] * (tiles_width + 1 + max_section_width) for i in range(tiles_height)]
+    row_width = len(tiles[0])
     #tiles[2][2] = 1
     #print(tiles)
 
@@ -579,7 +583,7 @@ def main():
 
                 elif ev.key == K_f:
                     if fps == 60:
-                        fps = 5
+                        fps = 1
                     else:
                         fps = 60
 
@@ -624,7 +628,7 @@ def main():
                 player_vy = speed*player_max_jump_strength + (1-speed)*player_min_jump_strength
 
             if not player_on_ground:
-                player_vy += gravity # - (jump_key*(player_vy < 0)*0.05*scale)
+                player_vy += gravity - (jump_key*(player_vy < 0)*(0.25*gravity))
 
             if player_y + player_vy >= ground_height and player_vy >= 0:# and not player_was_on_ground and not collided:
                 player_vy = 0
@@ -708,29 +712,42 @@ def main():
                             player_vy = 0
 
                     elif num_true == 2:
+                        #print("not again")
+
                         corner_x = tile[0]*16*scale if was_to_left else (tile[0]+1)*16*scale
                         corner_y = tile[1]*16*scale if was_above else (tile[1]+1)*16*scale
+                        draw.circle(screen, (255*((collidable[tiles[tile[1]][tile[0] - 1][0]] and was_to_left) or (collidable[tiles[tile[1]][tile[0] + 1][0]] and was_to_right)), 255*was_below, 255*was_above), (corner_x + world_x, corner_y), 16 + 16*was_to_left)
+
                         check_corner = True
 
                         #if was_to_left or was_to_right:
-                        if collidable[tiles[tile[1] - 1][tile[0]][0]]:
+                        if (collidable[tiles[tile[1] + 1][tile[0]][0]] and was_below) or (collidable[tiles[tile[1] - 1][tile[0]][0]] and was_above):
+                            print("?")
                             player_vx = 0
                             player_x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
                             check_corner = False
 
-                            if was_below and (collidable[tiles[tile[1]][tile[0] - 1][0]] and was_to_left) or (collidable[tiles[tile[1]][tile[0] + 1][0]] and was_to_right):
-                                    if not block_type in pushable:
-                                        player_vy = 0
-                                        player_y = (tile[1]+1)*16*scale
-                                    else:
-                                        player_vy += gravity
-                                        tiles[tile[1]][tile[0]][1] = player_y + player_vy - (tile[1]+1)*16*scale -0.1
-                                    print("t")
-
-                            elif was_above and (collidable[tiles[tile[1]][tile[0] - 1][0]] and was_to_left) or (collidable[tiles[tile[1]][tile[0] + 1][0]] and was_to_right):
-                                    player_on_ground = True
-                                    player_y = (tile[1] - 1)*16*scale
+                        # was within above if and I'm not sure why?
+                        if was_below and (collidable[tiles[tile[1]][tile[0] - 1][0]] and was_to_left) or (collidable[tiles[tile[1]][tile[0] + 1][0]] and was_to_right):
+                                    print("a")
+                                    #player_on_ground = True
+                                    #player_y = (tile[1] - 1)*16*scale
+                                    #player_vy = 0
+                                #if not block_type in pushable:
                                     player_vy = 0
+                                    player_y = (tile[1]+1)*16*scale
+                                #else:
+                                #    player_vy += gravity
+                                #    tiles[tile[1]][tile[0]][1] = player_y + player_vy - (tile[1]+1)*16*scale -0.1
+                                #print("t")
+
+                        elif was_above and (collidable[tiles[tile[1]][tile[0] - 1][0]] and was_to_left) or (collidable[tiles[tile[1]][tile[0] + 1][0]] and was_to_right):
+                                print("b")
+                                '''player_on_ground = True
+                                print(player_y, (tile[1]-1)*16*scale)
+                                player_y = (tile[1]-1)*16*scale
+                                player_vy = 0
+                                #player_vy = 0'''
 
                         '''if was_below and collidable[tiles[tile[1] - 1][tile[0]]]:
                             #print("a")
@@ -809,8 +826,8 @@ def main():
                                     player_y = (tile[1]+1)*16*scale"""
 
                     else:
-                        #pass
-                        print("The physics broke again?")
+                        pass
+                        #print("The physics broke again?")
                 else:
                     if block_type == 3:
                         tiles[tile[1]][tile[0]][0] = 0
@@ -831,16 +848,16 @@ def main():
 
             """ Spawning """
             if cloud_spawner.spawn(scroll_speed):
-                add_non_colliding_position(Cloud, size, entities, scrollables, size[0], x_start=size[0], x_end=size[0]*2)
+                add_non_colliding_position(Cloud, size, scrollables, size[0], x_start=size[0], x_end=size[0]*2)
 
             if bush_spawner.spawn(scroll_speed):
-                add_non_colliding_position(Bush, size, entities, scrollables, size[0], size[1]-(64*scale), x_start=size[0], x_end=size[0]*2)
+                add_non_colliding_position(Bush, size, scrollables, size[0], size[1]-(64*scale), x_start=size[0], x_end=size[0]*2)
 
             if hill_spawner.spawn(scroll_speed):
-                add_non_colliding_position(Hill, size, entities, scrollables, size[0], size[1]-(64*scale), x_start=size[0], x_end=size[0]*2)
+                add_non_colliding_position(Hill, size, scrollables, size[0], size[1]-(64*scale), x_start=size[0], x_end=size[0]*2)
 
-            if goomba_spawner.spawn(scroll_speed):
-                entities.append(Goomba(size[0], size[1]-(48*scale)))
+            #if goomba_spawner.spawn(scroll_speed):
+            #    entities.append(Goomba(size[0]+32*scale, size[1]-(48*scale)))
 
             """ Entity Update """ #and Drawing """
             i = 0
@@ -865,6 +882,9 @@ def main():
                 player_vy = 0
 
             """ World Update """
+            for scrollable in scrollables:
+                scrollable.tick(scroll_speed, size, world_x, tiles)
+
             world_x += scroll_speed
 
         else:
@@ -873,12 +893,16 @@ def main():
             time_since_dead += 1
 
         """ Entity Drawing """
+        for scrollable in scrollables:
+                scrollable.draw(screen)
+
         i = 0
         while i < len(entities):
             entities[i].draw(screen)
             i += 1
 
         """ World Drawing """
+
         coin.set_palette(palette_3[palette13][palette_3_anim[time_since_start//150 % (5)]])
         mini_coin.set_palette(palette_3[palette13][palette_3_anim[time_since_start//150 % (5)]])
         qm_block.set_palette(palette_3[palette13][palette_3_anim[time_since_start//150 % (5)]])
@@ -905,6 +929,10 @@ def main():
                     if i < len(tiles)-2:
                         for j in range(len(sections[next_section][0])):
                             #print(sections[next_section][i][j])
+                            if sections[next_section][i][j][0] == 7:
+                                print((j+len(row))*scale*16, i*scale*16)
+                                entities.append(Goomba((j+len(row))*scale*16, i*scale*16))
+
                             row.append(sections[next_section][i][j].copy())
 
                     else:

@@ -17,7 +17,7 @@ class Entity:
     def draw(self, screen: Surface):
         pass
 
-    def tick(self, scroll_speed, size):
+    def tick(self, scroll_speed, size, world_x, tiles):
         pass
 
     def set_palette(self, palette):
@@ -38,7 +38,7 @@ class Scroller(Entity):
     def draw(self, screen: Surface):
         screen.blit(self.img, (self.x, self.y, self.img.width, self.img.height))
 
-    def tick(self, scroll_speed, size) -> bool:
+    def tick(self, scroll_speed, size, world_x, tiles) -> bool:
         self.x += scroll_speed + self.speed
         return self.x > -self.img.width
 
@@ -48,21 +48,126 @@ Bush = type("Bush", (Scroller,), {"speed": 0, "list": []})
 Hill = type("Hill", (Scroller,), {"speed": 0, "list": []})
 
 class Goomba(Entity):
+    gravity = 0
+    ground_height = 0
+    x_speed = 0
+    width = 0
+    height = 0
+    collidable = []
+
+
     def __init__(self, x, y):
         self.x = x
         self.y = y
+        self.vx = 0
+        self.vy = 0
+        self.x_dir = -1
         self.frame = 0
         self.squished = False
         self.squished_time = 0
         self.dead = False
+        self.on_ground = True
 
-    def tick(self, scroll_speed, size):
+    def tick(self, scroll_speed, size, world_x, tiles):
         self.frame += 1
-        self.x += scroll_speed - 0.5*scale
+
+        if not self.on_ground:
+            self.vy += self.gravity # - (jump_key*(player_vy < 0)*0.05*scale)
+
+        if self.y + self.vy >= self.ground_height and self.vy >= 0:# and not player_was_on_ground and not collided:
+            self.vy = 0
+            self.y = self.ground_height
+
+        self.vx = self.x_dir * self.x_speed
+
+        if self.vx != 0 and self.x_dir == 0:
+            self.vx -= abs(self.vx)/(self.vx*scale)
+
+        self.tiles = (int((self.x + self.vx - world_x) // (scale*16)), int((self.y + self.vy) // (scale*16))), (int((self.x + self.vx + self.width - world_x) // (scale*16)), int((self.y + self.vy) // (scale*16))), (int((self.x + self.vx + self.width - world_x) // (scale*16)), int((self.y + self.vy + self.height) // (scale*16))), (int((self.x + self.vx - world_x) // (scale*16)), int((self.y + self.vy + self.height) // (scale*16)))
+
+        self.on_ground = False
+
+        for i in range(len(self.tiles)):
+            if tile[0] <
+            tile = self.tiles[i]
+            block_type = tiles[tile[1]][tile[0]][0]
+            was_to_left = self.x + self.width <= (tile[0])*16*scale + world_x
+            was_to_right = self.x >= (tile[0]+1)*16*scale + world_x
+            was_below = self.y >= (tile[1]+1)*16*scale
+            was_above = self.y + self.height <= tile[1]*16*scale
+            num_true = was_to_left + was_to_right + was_below + was_above
+
+            if self.collidable[block_type]:
+                if num_true == 1:
+                    if was_to_left or was_to_right:
+                        self.x_dir *= -1
+                        self.vx = 0
+                        self.x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
+
+                    elif was_below:
+                        self.vy = 0
+                        self.y = (tile[1]+1)*16*scale
+
+                    else:
+                        self.on_ground = True
+                        self.y = (tile[1] - 1)*16*scale
+                        self.vy = 0
+
+                elif num_true == 2:
+                    corner_x = tile[0]*16*scale if was_to_left else (tile[0]+1)*16*scale
+                    corner_y = tile[1]*16*scale if was_above else (tile[1]+1)*16*scale
+                    check_corner = True
+
+                    if self.collidable[tiles[tile[1] - 1][tile[0]][0]]:
+                        self.vx = 0
+                        self.x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
+                        check_corner = False
+
+                        if was_below and (self.collidable[tiles[tile[1]][tile[0] - 1][0]] and was_to_left) or (self.collidable[tiles[tile[1]][tile[0] + 1][0]] and was_to_right):
+                            self.vy = 0
+                            self.y = (tile[1]+1)*16*scale
+
+                        elif was_above and (self.collidable[tiles[tile[1]][tile[0] - 1][0]] and was_to_left) or (self.collidable[tiles[tile[1]][tile[0] + 1][0]] and was_to_right):
+                            self.on_ground = True
+                            self.y = (tile[1] - 1)*16*scale
+                            self.vy = 0
+
+                    if check_corner and not ((self.x - world_x + (self.width if was_to_left else 0) == corner_x and self.vx == 0) or (self.y + (self.height if was_above else 0) == corner_y and self.vy == 0)):
+                        slope = self.vy/self.vx if self.vx != 0 else 1e20
+                        test = slope*(corner_x - (self.x - world_x + (self.width if was_to_left else 0))) - corner_y + self.y + (self.height if was_above else 0)
+
+                        if was_below:
+                            if test > 0:
+                                self.vx = 0
+                                self.x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
+                            elif test < 0:
+                                self.vy += self.gravity
+                                tiles[tile[1]][tile[0]][1] = self.y + self.vy - (tile[1]+1)*16*scale
+                            elif random.randint(0, 1):
+                                self.vx = 0
+                                self.x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
+                            else:
+                                self.vy = 0
+                                self.y = (tile[1]+1)*16*scale
+
+                        else:
+                            if test < 0 or (not (test > 0) and random.randint(0, 1)):
+                                self.vx = 0
+                                self.x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
+                            else:
+                                self.on_ground = True
+                                self.y = (tile[1] - 1)*16*scale
+                                self.vy = 0
+
+        self.x = self.x + self.vx + scroll_speed
+        self.y += self.vy
+
+        self.on_ground = self.on_ground or self.y >= self.ground_height
+
         img = Goomba.images[((self.frame // 8) % 2)]
         if self.squished:
             self.squished_time += 1
-        if self.squished_time >= 2:
+        if self.squished_time >= 10:
             self.dead = True
         return self.x > -img.get_width() and not self.dead
 
@@ -239,11 +344,14 @@ def main():
     floor_brick = load_scaled_indexed_image("floor_brick.gif")
     brick_1 = load_scaled_indexed_image("brick_1.gif")
     brick_2 = load_scaled_indexed_image("brick_2.gif")
+    block_1 = load_scaled_indexed_image("block.gif")
     palette_1 = (((0, 0, 0), (156, 74, 0), (255, 204, 197)), ((0, 0, 0), (0, 123, 139), (181, 235, 242)), ((99, 99, 99), (173, 173, 173), (255, 255, 255)), ((0, 0, 0), (16, 148, 0), (189, 244, 171)))
     floor_brick.set_palette(palette_1[0])
     brick_1.set_palette(palette_1[0])
     brick_2.set_palette(palette_1[0])
+    block_1.set_palette(palette_1[0])
 
+    qm_block = load_scaled_indexed_image("qm_block.gif")
     cloud_1 = load_scaled_indexed_image("cloud_1.gif")
     cloud_2 = load_scaled_indexed_image("cloud_2.gif")
     palette_2 = (((0, 0, 0), (99, 173, 255), (255, 255, 255)), ((0, 123, 140), (99, 173, 255), (255, 255, 255)), ((99, 99, 99), (181, 49, 33), (255, 255, 255)), ((0, 0, 0), (66, 66, 255), (255, 255, 255)), ((0, 0, 0), (99, 173, 255), (255, 255, 255)), ((0, 0, 0), (99, 173, 255), (255, 255, 255)))
@@ -272,12 +380,16 @@ def main():
     Goomba.images = [goomba_1, goomba_2, goomba_3]
 
     coin = load_scaled_indexed_image("coin.gif")
+    mini_coin = load_scaled_indexed_image("mini_coin.gif")
     palette_3 = ((((0, 0, 0), (156, 74, 0), (230, 156, 33)), ((0, 0, 0), (156, 74, 0), (156, 74, 0)), ((0, 0, 0), (156, 74, 0), (82, 33, 0))), (((0, 123, 140), (156, 74, 0), (230, 156, 33)), ((0, 123, 140), (156, 74, 0), (156, 74, 0)), ((0, 123, 140), (156, 74, 0), (82, 33, 0))), (((99, 99, 99), (156, 74, 0), (230, 156, 33)), ((99, 99, 99), (156, 74, 0), (156, 74, 0)), ((99, 99, 99), (156, 74, 0), (82, 33, 0))), (((0, 0, 0), (66, 66, 255), (230, 156, 33)), ((0, 0, 0), (66, 66, 255), (156, 74, 0)), ((0, 0, 0), (66, 66, 255), (82, 33, 0))))
     palette_3_anim = (0, 0, 1, 2, 1)
     coin.set_palette(palette_3[0][0])
+    mini_coin.set_palette(palette_3[0][0])
+    qm_block.set_palette(palette_3[0][0])
 
-    tile_images = [brick_1, brick_2, coin]
-    collidable = [0, 1, 1, 0]
+    tile_images = [brick_1, brick_2, coin, qm_block, block_1, block_1]
+    pushable = [2, 4, 5]
+    collidable = [0, 1, 1, 0, 1, 1, 1]
 
     # Player vars
     player_width = mario_image_right.get_width()
@@ -328,11 +440,24 @@ def main():
     world_x = 0
     # tiles_per_section = 4
     # tiles_since_section = 0
+    jump_key = False
 
     player_tiles = (int((player_x + player_vx - world_x) // (scale*16)), int((player_y + player_vy) // (scale*16))), (int((player_x + player_vx + player_width - world_x) // (scale*16)), int((player_y + player_vy) // (scale*16))), (int((player_x + player_vx + player_width - world_x) // (scale*16)), int((player_y + player_vy + player_height) // (scale*16))), (int((player_x + player_vx - world_x) // (scale*16)), int((player_y + player_vy + player_height) // (scale*16)))
 
-    sections = [
+    '''[
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+        ],'''
 
+    sections = [
         [
             [0, 0, 0, 0],
             [0, 0, 0, 0],
@@ -345,18 +470,7 @@ def main():
             [0, 0, 0, 0],
             [0, 0, 0, 0],
         ],
-        [
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-        ],
+
         [
             [0, 0, 0, 0],
             [0, 0, 0, 0],
@@ -369,22 +483,60 @@ def main():
             [0, 0, 0, 0],
             [0, 0, 0, 0],
         ],
+        [
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 2, 2, 0],
+        ],
+        [
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 3, 3, 0, 0],
+            [0, 0, 3, 3, 0, 0],
+            [0, 2, 4, 4, 2, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+        ],
     ]
+
+    for i in range(len(sections)):
+        for j in range(len(sections[i])):
+            for k in range(len(sections[i][j])):
+                sections[i][j][k] = [sections[i][j][k], 0]
 
     max_section_width = 0
     for section in sections:
         if len(section[0]) > max_section_width:
             max_section_width = len(section[0])
 
-    tiles: queue[queue[int]] = [[0] * (tiles_width + 1 + max_section_width) for i in range(tiles_height)]
+    tiles: queue[queue[int, int]] = [[[0, 0]] * (tiles_width + 1 + max_section_width) for i in range(tiles_height)]
     #tiles[2][2] = 1
-    print(tiles)
+    #print(tiles)
 
     next_section = random.randint(0, len(sections)-1)
     tiles_until_section = len(sections[next_section][0])
 
     time_since_start = 0
+    time_since_dead = 0
     dead = False
+    coins = 0
+
+    Goomba.collidable = collidable
+    Goomba.ground_height =  ground_height
+    Goomba.gravity = gravity
+    Goomba.x_speed = scale/2
+    Goomba.width = 64
+    Goomba.height = 64
 
     while True:
         # fill background
@@ -401,6 +553,7 @@ def main():
 
                 elif ev.key == K_SPACE or ev.key == K_UP:
                     to_jump = True
+                    jump_key = True
 
                 elif ev.key == K_LEFT:
                     left = True
@@ -418,8 +571,17 @@ def main():
                     Bush.set_palette(Bush, palette_0[palette02])
                     Hill.set_palette(Hill, palette_0[palette02])
                     Cloud.set_palette(Cloud, palette_2[palette02])
+                    Goomba.set_palette(Goomba, palette_1[palette13])
                     floor_brick.set_palette(palette_1[palette13])
                     brick_1.set_palette(palette_1[palette13])
+                    brick_2.set_palette(palette_1[palette13])
+                    block_1.set_palette(palette_1[palette13])
+
+                elif ev.key == K_f:
+                    if fps == 60:
+                        fps = 5
+                    else:
+                        fps = 60
 
             elif ev.type == KEYUP:
                 if ev.key == K_LEFT:
@@ -442,6 +604,7 @@ def main():
 
                 elif ev.key == K_SPACE or ev.key == K_UP:
                     to_jump = False
+                    jump_key = False
 
         """ Tick """
         if not dead:
@@ -461,7 +624,7 @@ def main():
                 player_vy = speed*player_max_jump_strength + (1-speed)*player_min_jump_strength
 
             if not player_on_ground:
-                player_vy += gravity
+                player_vy += gravity # - (jump_key*(player_vy < 0)*0.05*scale)
 
             if player_y + player_vy >= ground_height and player_vy >= 0:# and not player_was_on_ground and not collided:
                 player_vy = 0
@@ -475,12 +638,16 @@ def main():
                 if abs(player_vx) < 1:
                     player_vx = 0
 
-            if player_vx == 0 and math.floor(player_x) + floor_sub != player_x and player_on_ground:
-                #print("i", math.floor(player_x) + floor_sub)
-                player_x = math.floor(player_x) + floor_sub
+            #if player_vx == 0 and math.floor(player_x) + floor_sub != player_x and player_on_ground:
+            #    #print("i", math.floor(player_x) + floor_sub)
+            #    player_x = math.floor(player_x) + floor_sub
 
             #prev_tiles = player_tiles
             player_tiles = (int((player_x + player_vx - world_x) // (scale*16)), int((player_y + player_vy) // (scale*16))), (int((player_x + player_vx + player_width - world_x) // (scale*16)), int((player_y + player_vy) // (scale*16))), (int((player_x + player_vx + player_width - world_x) // (scale*16)), int((player_y + player_vy + player_height) // (scale*16))), (int((player_x + player_vx - world_x) // (scale*16)), int((player_y + player_vy + player_height) // (scale*16)))
+
+            #for tile in player_tiles:
+            #    draw.rect(screen, (0, 255, 0), (tile[0]*64 + world_x, tile[1]*64, 64, 64))
+
             # tiles_to_check: set = {player_tiles[0], player_tiles[1], player_tiles[2], player_tiles[3]}
 
             #draw.polygon(screen, (0, 255, 0), ((player_tiles[0][0]*16*scale + world_x, player_tiles[0][1]*16*scale), (player_tiles[1][0]*16*scale + world_x, player_tiles[1][1]*16*scale), (player_tiles[2][0]*16*scale + world_x, player_tiles[2][1]*16*scale), (player_tiles[3][0]*16*scale + world_x, player_tiles[3][1]*16*scale)))
@@ -498,12 +665,18 @@ def main():
             for i in range(len(player_tiles)):
                 tile = player_tiles[i]
                 #prev_tile = prev_tiles[i]
+                block_type = tiles[tile[1]][tile[0]][0]
                 was_to_left = player_x + player_width <= (tile[0])*16*scale + world_x
                 was_to_right = player_x >= (tile[0]+1)*16*scale + world_x
-                was_below = player_y >= (tile[1]+1)*16*scale
+                if block_type in pushable:
+                    #print(player_y, (tile[1]+1)*16*scale + tiles[tile[1]][tile[0]][1])
+                    was_below = player_y >= (tile[1]+1)*16*scale + tiles[tile[1]][tile[0]][1] - 1
+                else:
+                    was_below = player_y >= (tile[1]+1)*16*scale
                 was_above = player_y + player_height <= tile[1]*16*scale
                 num_true = was_to_left + was_to_right + was_below + was_above
-                block_type = tiles[tile[1]][tile[0]]
+                #print(tiles[tile[1]][tile[0]])
+
 
                 if collidable[block_type]:
                     #collided = True
@@ -519,8 +692,15 @@ def main():
                             player_x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
 
                         elif was_below:
-                            player_vy = 0
-                            player_y = (tile[1]+1)*16*scale
+                            if not block_type in pushable:
+                                player_vy = 0
+                                player_y = (tile[1]+1)*16*scale
+                            else:
+                                player_vy += gravity*2
+                                tiles[tile[1]][tile[0]][1] = player_y + player_vy - (tile[1]+1)*16*scale
+                                #print(player_y)
+                                if block_type == 4: tiles[tile[1]][tile[0]][0] = 5
+
 
                         else:
                             player_on_ground = True
@@ -533,16 +713,21 @@ def main():
                         check_corner = True
 
                         #if was_to_left or was_to_right:
-                        if collidable[tiles[tile[1] - 1][tile[0]]]:
+                        if collidable[tiles[tile[1] - 1][tile[0]][0]]:
                             player_vx = 0
                             player_x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
                             check_corner = False
 
-                            if was_below and (collidable[tiles[tile[1]][tile[0] - 1]] and was_to_left) or (collidable[tiles[tile[1]][tile[0] + 1]] and was_to_right):
-                                    player_vy = 0
-                                    player_y = (tile[1]+1)*16*scale
+                            if was_below and (collidable[tiles[tile[1]][tile[0] - 1][0]] and was_to_left) or (collidable[tiles[tile[1]][tile[0] + 1][0]] and was_to_right):
+                                    if not block_type in pushable:
+                                        player_vy = 0
+                                        player_y = (tile[1]+1)*16*scale
+                                    else:
+                                        player_vy += gravity
+                                        tiles[tile[1]][tile[0]][1] = player_y + player_vy - (tile[1]+1)*16*scale -0.1
+                                    print("t")
 
-                            elif was_above and (collidable[tiles[tile[1]][tile[0] - 1]] and was_to_left) or (collidable[tiles[tile[1]][tile[0] + 1]] and was_to_right):
+                            elif was_above and (collidable[tiles[tile[1]][tile[0] - 1][0]] and was_to_left) or (collidable[tiles[tile[1]][tile[0] + 1][0]] and was_to_right):
                                     player_on_ground = True
                                     player_y = (tile[1] - 1)*16*scale
                                     player_vy = 0
@@ -583,15 +768,20 @@ def main():
                                     #print("d", (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x)
                                     player_x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
                                 elif test < 0:
-                                    player_vy = 0
-                                    player_y = (tile[1]+1)*16*scale
+                                    player_vy += gravity
+                                    tiles[tile[1]][tile[0]][1] = player_y + player_vy - (tile[1]+1)*16*scale
                                 elif random.randint(0, 1):
                                     player_vx = 0
                                     #print("e", (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x)
                                     player_x = (tile[0]+1)*16*scale + world_x if was_to_right else (tile[0]-1)*16*scale + world_x
                                 else:
-                                    player_vy = 0
-                                    player_y = (tile[1]+1)*16*scale
+                                    if not block_type in pushable:
+                                        player_vy = 0
+                                        player_y = (tile[1]+1)*16*scale
+                                    else:
+                                        player_vy += gravity
+                                        tiles[tile[1]][tile[0]][1] = player_y + player_vy - (tile[1]+1)*16*scale -0.1
+                                    print("v")
 
                             else:
                                 if test < 0 or (not (test > 0) and random.randint(0, 1)):
@@ -619,11 +809,13 @@ def main():
                                     player_y = (tile[1]+1)*16*scale"""
 
                     else:
+                        #pass
                         print("The physics broke again?")
                 else:
                     if block_type == 3:
-                        tiles[tile[1]][tile[0]] = 0
+                        tiles[tile[1]][tile[0]][0] = 0
                         score += 200
+                        coins += 1
 
             # print(tiles_to_check)
 
@@ -654,7 +846,7 @@ def main():
             i = 0
             while i < len(entities):
                 entity = entities[i]
-                if not entity.tick(scroll_speed, size):
+                if not entity.tick(scroll_speed, size, world_x, tiles):
                     entities.pop(i)
                     continue
 
@@ -664,11 +856,21 @@ def main():
                             score += 100
                         elif not entity.squished:
                             dead = True
+                            player_vy = 0
 
                 i += 1
 
             if player_x < 0:
                 dead = True
+                player_vy = 0
+
+            """ World Update """
+            world_x += scroll_speed
+
+        else:
+            player_vy += (time_since_dead > 60)*gravity
+            player_y += player_vy
+            time_since_dead += 1
 
         """ Entity Drawing """
         i = 0
@@ -678,8 +880,9 @@ def main():
 
         """ World Drawing """
         coin.set_palette(palette_3[palette13][palette_3_anim[time_since_start//150 % (5)]])
+        mini_coin.set_palette(palette_3[palette13][palette_3_anim[time_since_start//150 % (5)]])
+        qm_block.set_palette(palette_3[palette13][palette_3_anim[time_since_start//150 % (5)]])
 
-        world_x += scroll_speed
         #print(world_x)
         if world_x <= -scale*16:
             world_x += scale*16
@@ -701,20 +904,30 @@ def main():
 
                     if i < len(tiles)-2:
                         for j in range(len(sections[next_section][0])):
-                            row.append(sections[next_section][(i)][j])
+                            #print(sections[next_section][i][j])
+                            row.append(sections[next_section][i][j].copy())
 
                     else:
                         for i in range(len(sections[next_section][0])):
-                            row.append(0)
+                            row.append([0, 0])
 
                 next_section = random.randint(0, len(sections)-1)
                 tiles_until_section = len(sections[next_section][0])
 
+        # print(tiles)
         for j in range(len(tiles)):
             for i in range(len(tiles[0])):
                 tile = tiles[j][i]
-                if tile:
-                    screen.blit(tile_images[tile-1], (i*scale*16 + world_x, j*scale*16, 16, 16))
+                if tile[0]:
+                    if tile[0] in pushable:
+                        if (i, j) not in player_tiles:
+                            #if tiles[j][i][1] != 0:
+                            #    print(player_tiles, i, j)
+                            #    draw.rect(screen, (255, 0, 0), (i*64 + 10 + world_x, j*64 + 10, 64, 64))
+                            tiles[j][i][1] = 0
+                        screen.blit(tile_images[tile[0]-1], (i*scale*16 + world_x, j*scale*16 + tile[1], 16, 16))
+                    else:
+                        screen.blit(tile_images[tile[0]-1], (i*scale*16 + world_x, j*scale*16, 16, 16))
 
 
         for i in range(-1, size[0]//(1024*scale) + math.ceil(size[0]/(512*scale))):
@@ -761,11 +974,19 @@ def main():
         # draw.line(screen, (0, 0, 0), (1024, 0), (1024, size[1]))
 
         """ UI Drawing """
-        score_text_string = "Score:" + str(score)
-        score_text = score_font.render(score_text_string, True, (255, 255, 255))
-        score_text_rect = score_text.get_rect()
-        score_text_rect.center = (size[0] - score_text_rect.width/2 - scale*16, 50)
-        screen.blit(score_text, score_text_rect)
+        score_text_string = f"Mario\n{score:0{6}}"
+        score_text_surf = score_font.render(score_text_string, True, (255, 255, 255))
+        score_text_rect = score_text_surf.get_rect()
+        score_text_rect.center = (scale*48, scale*16)
+        screen.blit(score_text_surf, score_text_rect)
+
+        coin_text_string = f"×{coins:0{2}}"
+        coin_text_surf = score_font.render(coin_text_string, True, (255, 255, 255))
+        coin_text_rect = coin_text_surf.get_rect()
+        coin_text_rect.center = (scale*112, scale*16)
+        screen.blit(coin_text_surf, coin_text_rect)
+
+        screen.blit(mini_coin, (scale*88, scale*8, scale*16, scale*16))
 
         floor_sub = -(-(units) % (512*scale)) + (1024*scale)*i + 2/scale - math.floor(-(-(units) % (512*scale)) + (1024*scale)*i + 2/scale)
 

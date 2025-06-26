@@ -13,3 +13,5 @@ https://www.spriters-resource.com/fullview/164123/
 https://www.spriters-resource.com/fullview/20641/
 https://www.spriters-resource.com/fullview/20640/
 https://www.spriters-resource.com/nes/supermariobros/sheet/20640/
+https://www.youtube.com/watch?v=EwONt4r2rMM
+https://www.mariowiki.com/Super_Mario_Bros.

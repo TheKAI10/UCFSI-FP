@@ -3,6 +3,10 @@
 # Final Project
 # Use left and right arrow keys to move and space bar or up arrow to jump
 
+# Nevermind other things like the text rendering also broke so I'm just going to keep the old one
+# apparently it can't handle newlines?
+"""# I installed the main pygame and made it work with this, idk why I had the other one before"""
+
 # Note: this uses the colors from nestopia?
 import queue
 import sys, random
@@ -36,11 +40,11 @@ class Scroller(Entity):
         self.list.append(self)
 
     def draw(self, screen: Surface):
-        screen.blit(self.img, (self.x, self.y, self.img.width, self.img.height))
+        screen.blit(self.img, (self.x, self.y, self.img.get_width(), self.img.get_height()))
 
     def tick(self, scroll_speed, size, world_x, tiles) -> bool:
         self.x += scroll_speed + self.speed
-        return self.x > -self.img.width
+        return self.x > -self.img.get_width()
 
 # "There's no such thing as compile time in python" - an idiot
 Cloud = type("Cloud", (Scroller,), {"speed": -0.5, "list": []})
@@ -200,14 +204,14 @@ def load_scaled_image(name: str): #, scale: int):
 def load_scaled_indexed_image(name: str): #, scale: int):
     result = image.load(name)
     palette = result.get_palette()
-    result = transform.scale(result, (result.width*scale, result.height*scale))
+    result = transform.scale(result, (result.get_width()*scale, result.get_height()*scale))
     result.set_palette(palette)
     return result
 
 def load_scaled_indexed_image_palette(name: str): #, scale: int):
     result = image.load(name)
     palette = result.get_palette()
-    result = transform.scale(result, (result.width*scale, result.height*scale))
+    result = transform.scale(result, (result.get_width()*scale, result.get_height()*scale))
     result.set_palette(palette)
     return result, palette
 
@@ -218,7 +222,7 @@ def load_scaled_flipped_image(name: str): #, scale: int):
 def load_scaled_flipped_indexed_image(name: str): #, scale: int):
     result = image.load(name)
     palette = result.get_palette()
-    result = transform.scale(result, (result.width*scale, result.height*scale))
+    result = transform.scale(result, (result.get_width()*scale, result.get_height()*scale))
     result_flipped = transform.flip(result, True, False)
     result.set_palette(palette)
     result_flipped.set_palette(palette)
@@ -227,7 +231,7 @@ def load_scaled_flipped_indexed_image(name: str): #, scale: int):
 def load_scaled_flipped_indexed_image_palette(name: str): #, scale: int):
     result = image.load(name)
     palette = result.get_palette()
-    result = transform.scale(result, (result.width*scale, result.height*scale))
+    result = transform.scale(result, (result.get_width()*scale, result.get_height()*scale))
     result_flipped = transform.flip(result, True, False)
     result.set_palette(palette)
     result_flipped.set_palette(palette)
@@ -240,8 +244,8 @@ def add_non_colliding_position(class_type: type, size, entities: list[Entity], x
     if class_type is Hill and img == 1:
         offset += scale*3
 
-    x_end = size[0] - class_type.images[img].width if x_end is None else x_end
-    y_end = size[1] - class_type.images[img].height - scale*128 if y_end is None else y_end
+    x_end = size[0] - class_type.images[img].get_width() if x_end is None else x_end
+    y_end = size[1] - class_type.images[img].get_height() - scale*128 if y_end is None else y_end
 
     x = random.randint(x_start, x_end)//4 * 4 if x_pos is None else x_pos
     y = random.randint(y_start, y_end) if y_pos is None else y_pos - offset
@@ -250,10 +254,10 @@ def add_non_colliding_position(class_type: type, size, entities: list[Entity], x
     i = 0
     while collision:
         for entity in entities:
-            if Rect(x, y, class_type.images[img].width, class_type.images[img].height).colliderect((entity.x, entity.y, entity.img.width, entity.img.height)):
+            if Rect(x, y, class_type.images[img].get_width(), class_type.images[img].get_height()).colliderect((entity.x, entity.y, entity.img.get_width(), entity.img.get_height())):
                 collision = True
-                if x_pos is None: x = random.randint(0, size[0] - class_type.images[img].width)//4 * 4
-                if y_pos is None: y = random.randint(0, size[1] - class_type.images[img].height - (scale*128))//4 * 4
+                if x_pos is None: x = random.randint(0, size[0] - class_type.images[img].get_width())//4 * 4
+                if y_pos is None: y = random.randint(0, size[1] - class_type.images[img].get_height() - (scale*128))//4 * 4
                 break
         else:
             collision = False
@@ -297,7 +301,7 @@ def main():
     # scale = size[0]//480
     # scale = 4
 
-    screen_ratio = 4/3
+    screen_ratio = 8/7
     #screen_ratio = 16/9
     tiles_width = 16
     tiles_height = int(tiles_width*(1/screen_ratio))
@@ -317,7 +321,7 @@ def main():
     if size == desktop_size:
         screen = display.set_mode(size, FULLSCREEN)
     else:
-        screen = display.set_mode(size, NOFRAME)
+        screen = display.set_mode(size)# NOFRAME)
 
 
     display.set_caption("Mario Game")
@@ -430,7 +434,7 @@ def main():
     palette = 0
     #collided = False
 
-    cloud_spawner = Spawner(2, init_scrollable(Cloud, size, scroll_speed, scrollables, 5))
+    cloud_spawner = Spawner(2, init_scrollable(Cloud, size, scroll_speed, scrollables, 2))
     bush_spawner = Spawner(2, init_scrollable(Bush, size, scroll_speed, scrollables, 2, y_pos = size[1]-(64*scale)))
     hill_spawner = Spawner(2, init_scrollable(Hill, size, scroll_speed, scrollables, 2, y_pos = size[1]-(64*scale)))
     goomba_spawner = Spawner(2, 64*scale)
@@ -462,10 +466,6 @@ def main():
 
     sections = [
         [
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
             [0, 3, 3, 0],
             [0, 0, 0, 0],
             [0, 2, 2, 0],
@@ -475,9 +475,6 @@ def main():
         ],
 
         [
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
             [0, 2, 2, 0],
             [0, 1, 1, 0],
             [0, 1, 1, 0],
@@ -487,22 +484,9 @@ def main():
             [0, 0, 0, 0],
         ],
         [
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
             [0, 2, 2, 0],
         ],
         [
-            [0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0],
             [0, 0, 3, 3, 0, 0],
             [0, 0, 3, 3, 0, 0],
             [0, 2, 4, 4, 2, 0],
@@ -513,6 +497,9 @@ def main():
     ]
 
     for i in range(len(sections)):
+        if len(sections[i]) != tiles_height:
+            for j in range(tiles_height - len(sections[i]) - 2):
+                sections[i].insert(0, [0]*len(sections[i][0]))
         for j in range(len(sections[i])):
             for k in range(len(sections[i][j])):
                 if type(sections[i][j][k]) is int:
@@ -535,6 +522,11 @@ def main():
     time_since_dead = 0
     dead = False
     coins = 0
+    prev_score = score
+    score_text_string = f"Mario\n{score:0{6}}"
+    score_text_surf = score_font.render(score_text_string, True, (255, 255, 255))
+    score_text_rect = score_text_surf.get_rect()
+    score_text_rect.topleft = (scale*14, scale*8)
 
     Goomba.collidable = collidable
     Goomba.ground_height =  ground_height
@@ -543,9 +535,17 @@ def main():
     Goomba.width = 64
     Goomba.height = 64
 
+    world_text_string = "world\n run"
+    world_text_surf = score_font.render(world_text_string, True, (255, 255, 255))
+    world_text_rect = world_text_surf.get_rect()
+    world_text_rect.topleft = (scale*144, scale*8)
+
+    background_colors = [(136, 134, 255), (0, 0, 0), (0, 0, 0), (66, 64, 255)]#, (136, 134, 255), (136, 134, 255)]
+    background_color = background_colors[0]
+
     while True:
         # fill background
-        screen.fill((136, 134, 255))
+        screen.fill(background_color)
 
         # Check events for exit
         for ev in event.get():
@@ -581,6 +581,7 @@ def main():
                     brick_1.set_palette(palette_1[palette13])
                     brick_2.set_palette(palette_1[palette13])
                     block_1.set_palette(palette_1[palette13])
+                    background_color = background_colors[palette13]
 
                 elif ev.key == K_f:
                     if fps == 60:
@@ -619,7 +620,7 @@ def main():
             scroll_speed = (((size[0] - player_width - ((size[0]/10)*scale)) - player_x) // (32*scale))*2 if player_x > size[0] - player_width - ((size[0]/10)*scale) else -0.25*scale
             units += scroll_speed
 
-            player_running = left or right
+            player_running = player_vx != 0 # left or right
 
             if player_running and not frame % 6:
                 player_running_frame += 1 if player_running_frame < 3 else -3
@@ -740,8 +741,16 @@ def main():
                                     #player_y = (tile[1] - 1)*16*scale
                                     #player_vy = 0
                                 #if not block_type in pushable:
-                            player_vy = 0
-                            player_y = (tile[1]+1)*16*scale # + tiles[tile[1]][tile[0]][1]
+                            if not block_type in pushable:
+                                player_vy = 0
+                                player_y = (tile[1]+1)*16*scale
+                                #print("x", player_y)
+                            else:
+                                if not player_was_on_ground:
+                                    player_vy += gravity*2
+                                tiles[tile[1]][tile[0]][1] = player_y + player_vy - (tile[1]+1)*16*scale # + player_vy - (tile[1]+1)*16*scale
+                                #print(player_y)
+                                if block_type == 4: tiles[tile[1]][tile[0]][0] = 5 # + tiles[tile[1]][tile[0]][1]
                                 #else:
                                 #    player_vy += gravity
                                 #    tiles[tile[1]][tile[0]][1] = player_y + player_vy - (tile[1]+1)*16*scale -0.1
@@ -1016,27 +1025,31 @@ def main():
         # draw.line(screen, (0, 0, 0), (1024, 0), (1024, size[1]))
 
         """ UI Drawing """
-        score_text_string = f"Mario\n{score:0{6}}"
-        score_text_surf = score_font.render(score_text_string, True, (255, 255, 255))
-        score_text_rect = score_text_surf.get_rect()
-        score_text_rect.center = (scale*48, scale*16)
+        if score != prev_score:
+            score_text_string = f"Mario\n{score:0{6}}"
+            score_text_surf = score_font.render(score_text_string, True, (255, 255, 255))
+            score_text_rect = score_text_surf.get_rect()
+            score_text_rect.topleft = (scale*14, scale*8)
+        prev_score = score
         screen.blit(score_text_surf, score_text_rect)
 
         coin_text_string = f"×{coins:0{2}}"
         coin_text_surf = score_font.render(coin_text_string, True, (255, 255, 255))
         coin_text_rect = coin_text_surf.get_rect()
-        coin_text_rect.topleft = (scale*96, scale*8)
+        coin_text_rect.topleft = (scale*96, scale*16)
         screen.blit(coin_text_surf, coin_text_rect)
 
-        screen.blit(mini_coin, (scale*84, scale*4, scale*16, scale*16))
+        screen.blit(mini_coin, (scale*84, scale*12, scale*16, scale*16))
 
-        world_text_string = "world\n run"
-        world_text_surf = score_font.render(world_text_string, True, (255, 255, 255))
-        world_text_rect = world_text_surf.get_rect()
-        world_text_rect.topleft = (scale*144, scale*8)
         screen.blit(world_text_surf, world_text_rect)
 
-        floor_sub = -(-(units) % (512*scale)) + (1024*scale)*i + 2/scale - math.floor(-(-(units) % (512*scale)) + (1024*scale)*i + 2/scale)
+        time_text_string = f"TIME\n {time_since_start//1000:03d}"
+        time_text_surf = score_font.render(time_text_string, True, (255, 255, 255))
+        time_text_rect = time_text_surf.get_rect()
+        time_text_rect.topleft = (scale*208, scale*8)
+        screen.blit(time_text_surf, time_text_rect)
+
+        # floor_sub = -(-(units) % (512*scale)) + (1024*scale)*i + 2/scale - math.floor(-(-(units) % (512*scale)) + (1024*scale)*i + 2/scale)
 
         # Show frame and fix framerate
         display.flip()
